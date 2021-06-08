@@ -102,7 +102,7 @@ exports.deleteCourse = asyncHandler(async (req, res, next) => {
 
   if (!course) {
     return next(
-      new ErrorResponse(`no course found with id of ${req.params.bootcampId}`)
+      new ErrorResponse(`no course found with id of ${req.params.id}`)
     );
   }
 
