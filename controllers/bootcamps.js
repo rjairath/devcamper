@@ -7,83 +7,9 @@ const geocoder = require("../utils/geocoder");
 // @desc    Get all bootcamps
 // @route   GET /api/v1/bootcamps
 // @access  Public
-exports.getBootcamps = async (req, res, next) => {
-  try {
-    let query;
-
-    // Copying the query object
-    let reqQuery = { ...req.query };
-
-    // Removing fields from the query object
-    let removeFields = ["select", "sortBy", "page", "limit"];
-    removeFields.forEach((param) => delete reqQuery[param]);
-
-    // Creating the query string from the modified object
-    let queryStr = JSON.stringify(reqQuery);
-
-    // Accounting for comparison operators
-    queryStr = queryStr.replace(
-      /\b(lte|lt|gte|gt|in)\b/g,
-      (match) => `$${match}`
-    );
-
-    // Finding resource
-    query = Bootcamp.find(JSON.parse(queryStr)).populate("courses");
-
-    // Chaining operations to the query
-    // Select
-    if (req.query.select) {
-      let selectFields = req.query.select.split(",").join(" ");
-      query.select(selectFields);
-    }
-
-    // Sort
-    if (req.query.sortBy) {
-      let sortedFields = req.query.sortBy.split(",").join(" ");
-      query.sort(sortedFields);
-    } else {
-      query.sort("-createdAt");
-    }
-
-    // Pagination
-    const page = parseInt(req.query.page, 10) || 1;
-    const limit = parseInt(req.query.limit, 10) || 10;
-    const startIndex = (page - 1) * limit;
-    const endIndex = page * limit;
-    const total = await Bootcamp.countDocuments();
-
-    query.skip(startIndex).limit(limit);
-
-    // Executing the query
-    const bootcamps = await query;
-
-    // Pagination result
-    const pagination = {};
-
-    if (endIndex < total) {
-      pagination.next = {
-        page: page + 1,
-        limit,
-      };
-    }
-
-    if (startIndex > 0 && endIndex <= total) {
-      pagination.prev = {
-        page: page - 1,
-        limit,
-      };
-    }
-
-    res.status(200).json({
-      success: true,
-      count: bootcamps.length,
-      pagination,
-      data: bootcamps,
-    });
-  } catch (err) {
-    next(err);
-  }
-};
+exports.getBootcamps = asyncHandler(async (req, res, next) => {
+  res.status(200).json(res.advancedResults);
+});
 
 // @desc    Get single bootcamp
 // @route   GET /api/v1/bootcamps/:id
