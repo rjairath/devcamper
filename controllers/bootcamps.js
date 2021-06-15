@@ -31,43 +31,54 @@ exports.getBootcamp = asyncHandler(async (req, res, next) => {
 // @desc    Create a bootcamp
 // @route   POST /api/v1/bootcamps
 // @access  Private
-exports.createBootcamp = async (req, res, next) => {
-  try {
-    const bootcamp = await Bootcamp.create(req.body);
+exports.createBootcamp = asyncHandler(async (req, res, next) => {
+  // Add the user Id in the body
+  req.body.user = req.user.id;
 
-    res.status(201).json({
-      success: true,
-      data: bootcamp,
-    });
-  } catch (err) {
-    next(err);
+  // User who is not admin can't add more than 1 bootcamp
+  const publishedBootcamp = await Bootcamp.findOne({ user: req.user.id });
+
+  if (publishedBootcamp && req.user.role != "admin") {
+    return next(new ErrorResponse(`User ${req.user.id} is not an admin`, 403));
   }
-};
+
+  const bootcamp = await Bootcamp.create(req.body);
+
+  res.status(201).json({
+    success: true,
+    data: bootcamp,
+  });
+});
 
 // @desc    Update a bootcamp
 // @route   PUT /api/v1/bootcamps/:id
 // @access  Private
-exports.updateBootcamp = async (req, res, next) => {
-  try {
-    const bootcamp = await Bootcamp.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-      runValidators: true,
-    });
+exports.updateBootcamp = asyncHandler(async (req, res, next) => {
+  let bootcamp = await Bootcamp.findById(req.params.id);
 
-    if (!bootcamp) {
-      return res.status(400).json({
-        success: false,
-      });
-    }
-
-    res.status(200).json({
-      success: true,
-      data: bootcamp,
-    });
-  } catch (err) {
-    next(err);
+  if (!bootcamp) {
+    return next(
+      new ErrorResponse(`No bootcamp found with id of ${req.params.id}`, 404)
+    );
   }
-};
+
+  // Make sure user is bootcamp owner
+  if (bootcamp.user.toString() !== req.user.id && req.user.role !== "admin") {
+    return next(
+      new ErrorResponse(`User ${req.user.id} can't update this bootcamp `, 401)
+    );
+  }
+
+  bootcamp = await Bootcamp.findByIdAndUpdate(req.params.id, req.body, {
+    new: true,
+    runValidators: true,
+  });
+
+  res.status(200).json({
+    success: true,
+    data: bootcamp,
+  });
+});
 
 // @desc    Delete bootcamp
 // @route   DELETE /api/v1/bootcamps/:id
@@ -76,9 +87,16 @@ exports.deleteBootcamp = asyncHandler(async (req, res, next) => {
   const bootcamp = await Bootcamp.findById(req.params.id);
 
   if (!bootcamp) {
-    return res.status(400).json({
-      success: false,
-    });
+    return next(
+      new ErrorResponse(`No bootcamp found with id of ${req.params.id}`, 404)
+    );
+  }
+
+  // Make sure user is bootcamp owner
+  if (bootcamp.user.toString() !== req.user.id && req.user.role !== "admin") {
+    return next(
+      new ErrorResponse(`User ${req.user.id} can't delete this bootcamp `, 401)
+    );
   }
 
   await bootcamp.remove();
