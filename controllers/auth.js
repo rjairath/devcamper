@@ -76,7 +76,7 @@ exports.forgotPassword = asyncHandler(async (req, res, next) => {
   // Create the reset URl
   const resetUrl = `${req.protocol}://${req.get(
     "host"
-  )}/api/v1/resetPassword/${resetToken}`;
+  )}/api/v1/auth/resetPassword/${resetToken}`;
 
   const message = `Receiving this mail because you requested a password change. 
   Please send a PUT request to ${resetUrl} with the new password`;
@@ -126,6 +126,44 @@ exports.resetPassword = asyncHandler(async (req, res, next) => {
   user.resetPasswordExpire = undefined;
 
   await user.save({ validateBeforeSave: false });
+
+  sendTokenResponse(user, 200, res);
+});
+
+// @desc    Update User Details
+// @route   PUT /api/v1/auth/updatedetails
+// @access  Private
+exports.updateDetails = asyncHandler(async (req, res, next) => {
+  const fieldsToUpdate = {
+    email: req.body.email,
+    name: req.body.name,
+  };
+
+  const user = await User.findByIdAndUpdate(req.user.id, fieldsToUpdate, {
+    new: true,
+    runValidators: true,
+  });
+
+  res.status(200).json({
+    success: true,
+    data: user,
+  });
+});
+
+// @desc    Update User Password
+// @route   PUT /api/v1/auth/updatepassword
+// @access  Private
+exports.updatePassword = asyncHandler(async (req, res, next) => {
+  const user = await User.findById(req.user.id).select("+password");
+
+  const isPwdCorrect = await user.matchPassword(req.body.currentPassword);
+
+  if (!isPwdCorrect) {
+    return next(new ErrorResponse(`Incorrect password`, 401));
+  }
+
+  user.password = req.body.newPassword;
+  await user.save();
 
   sendTokenResponse(user, 200, res);
 });
